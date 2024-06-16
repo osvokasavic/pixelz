@@ -1,0 +1,22 @@
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: Arial, sans-serif;
+}
+
+#pixel-grid {
+    display: grid;
+    grid-template-columns: repeat(200, 1px);
+    grid-template-rows: repeat(200, 1px);
+    margin-bottom: 20px;
+}
+
+.pixel {
+    width: 1px;
+    height: 1px;
+}
+
+button, select {
+    margin-top: 10px;
+}
