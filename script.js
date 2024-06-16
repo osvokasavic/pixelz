@@ -9,6 +9,7 @@ let pixels = [];
 let speed = 0.2;
 let coreCounts = [0, 0];
 let moraleBoost = [0, 0]; // Morale boost countdown
+let notificationsCounter = {};
 
 const createGrid = () => {
     for (let y = 0; y < gridSize; y++) {
@@ -67,7 +68,7 @@ const fight = (x, y) => {
 
             // Apply morale boost
             if (moraleBoost[color] > 0) {
-                chance *= 1.8; // 80% attack boost
+                chance *= 2; // 100% attack boost
             }
 
             if (Math.random() < chance) {
@@ -77,7 +78,7 @@ const fight = (x, y) => {
                 neighborPixel.dataset.debuff = 6;
                 neighborPixel.dataset.core = 0; // Not a core until stabilized
                 neighborPixel.dataset.revolt = 3; // Set revolt period
-                addNotification(`${colors[color]} captured a pixel!`);
+                addNotification(`${colors[color]} captured a pixel!`, color);
             } else {
                 neighborPixel.dataset.conquerAttempts = (neighborPixel.dataset.conquerAttempts || 0) + 1;
             }
@@ -100,7 +101,7 @@ const handleRevolt = (x, y) => {
                 pixel.dataset.debuff = 6;
                 pixel.dataset.core = 0;
                 pixel.dataset.revolt = 0;
-                addNotification(`${colors[originalColor]} revolted and recaptured a pixel!`);
+                addNotification(`${colors[originalColor]} revolted and recaptured a pixel!`, originalColor);
             }
         });
         pixel.dataset.revolt--;
@@ -115,7 +116,7 @@ const updateDebuffs = () => {
                 pixel.dataset.debuff--;
             } else if (pixel.dataset.core === '0') {
                 pixel.dataset.core = 1; // Stabilize the pixel as core
-                addNotification(`${colors[pixel.dataset.color]} stabilized a core!`);
+                addNotification(`${colors[pixel.dataset.color]} stabilized a core!`, parseInt(pixel.dataset.color));
             }
         }
     }
@@ -126,7 +127,7 @@ const checkMorale = () => {
         const currentCoreCount = pixels.flat().filter(pixel => parseInt(pixel.dataset.color) === color && pixel.dataset.core === '1').length;
         if (currentCoreCount < 0.75 * coreCounts[color]) {
             moraleBoost[color] = 10; // 10 frames morale boost
-            addNotification(`${colors[color]} gained a morale boost!`);
+            addNotification(`${colors[color]} gained a morale boost!`, color);
         }
     }
 };
@@ -139,6 +140,27 @@ const applyMoraleBoost = () => {
     }
 };
 
+const checkVictory = () => {
+    const allPixels = pixels.flat();
+    const redPixels = allPixels.filter(pixel => parseInt(pixel.dataset.color) === 0).length;
+    const bluePixels = allPixels.filter(pixel => parseInt(pixel.dataset.color) === 1).length;
+
+    if (redPixels === 0 || bluePixels === 0) {
+        clearInterval(interval);
+        displayStatistics(redPixels, bluePixels);
+    }
+};
+
+const displayStatistics = (redPixels, bluePixels) => {
+    const message = redPixels > 0 ? "Red Wins!" : "Blue Wins!";
+    const stats = `
+        <h2>${message}</h2>
+        <p>Red Pixels: ${redPixels}</p>
+        <p>Blue Pixels: ${bluePixels}</p>
+    `;
+    notifications.innerHTML = stats;
+};
+
 const runFrame = () => {
     for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
@@ -149,15 +171,32 @@ const runFrame = () => {
     updateDebuffs();
     checkMorale();
     applyMoraleBoost();
+    checkVictory();
 };
 
-const addNotification = (message) => {
-    const notification = document.createElement('div');
-    notification.classList.add('notification');
-    notification.textContent = message;
-    notifications.appendChild(notification);
-    setTimeout(() => {
-        notification.remove();
+const addNotification = (message, colorIndex) => {
+    if (!notificationsCounter[message]) {
+        notificationsCounter[message] = { count: 1, element: null };
+    } else {
+        notificationsCounter[message].count++;
+    }
+
+    if (notificationsCounter[message].element) {
+        notificationsCounter[message].element.textContent = `${message} x${notificationsCounter[message].count}`;
+    } else {
+        const notification = document.createElement('div');
+        notification.classList.add('notification');
+        notification.textContent = message;
+        notifications.appendChild(notification);
+        notificationsCounter[message].element = notification;
+    }
+
+    clearTimeout(notificationsCounter[message].timeout);
+    notificationsCounter[message].timeout = setTimeout(() => {
+        if (notificationsCounter[message].element) {
+            notificationsCounter[message].element.remove();
+        }
+        delete notificationsCounter[message];
     }, 3000);
 };
 
@@ -165,6 +204,9 @@ let interval;
 
 startButton.addEventListener('click', () => {
     clearInterval(interval);
+    notifications.innerHTML = '';
+    notificationsCounter = {};
+    createGrid();
     interval = setInterval(runFrame, speed * 1000);
 });
 
