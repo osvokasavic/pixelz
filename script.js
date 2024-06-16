@@ -10,8 +10,13 @@ let speed = 0.2;
 let coreCounts = [0, 0];
 let moraleBoost = [0, 0]; // Morale boost countdown
 let notificationsCounter = {};
+let frameCount = 0;
 
 const createGrid = () => {
+    pixelGrid.innerHTML = '';
+    pixels = [];
+    coreCounts = [0, 0];
+    moraleBoost = [0, 0];
     for (let y = 0; y < gridSize; y++) {
         pixels[y] = [];
         for (let x = 0; x < gridSize; x++) {
@@ -43,7 +48,7 @@ const getExtendedNeighbors = (x, y) => {
     const extendedNeighbors = [];
     for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
-            if (x + dx >= 0 && x + dx < gridSize && y + dy >= 0 && dy < gridSize) {
+            if (x + dx >= 0 && x + dx < gridSize && y + dy >= 0 && y + dy < gridSize) {
                 extendedNeighbors.push([x + dx, y + dy]);
             }
         }
@@ -63,12 +68,12 @@ const fight = (x, y) => {
             if (neighborPixel.dataset.debuff > 0) {
                 chance = 0.75;
             } else if (neighborPixel.dataset.conquerAttempts) {
-                chance += 0.1 * neighborPixel.dataset.conquerAttempts;
+                chance = Math.min(0.5 + 0.1 * neighborPixel.dataset.conquerAttempts, 0.6);
             }
 
             // Apply morale boost
             if (moraleBoost[color] > 0) {
-                chance *= 2; // 100% attack boost
+                chance = 1; // 100% attack boost
             }
 
             if (Math.random() < chance) {
@@ -126,16 +131,12 @@ const checkMorale = () => {
     for (let color = 0; color < 2; color++) {
         const currentCoreCount = pixels.flat().filter(pixel => parseInt(pixel.dataset.color) === color && pixel.dataset.core === '1').length;
         if (currentCoreCount < 0.75 * coreCounts[color]) {
-            moraleBoost[color] = 10; // 10 frames morale boost
-            addNotification(`${colors[color]} gained a morale boost!`, color);
-        }
-    }
-};
-
-const applyMoraleBoost = () => {
-    for (let color = 0; color < 2; color++) {
-        if (moraleBoost[color] > 0) {
-            moraleBoost[color]--;
+            if (moraleBoost[color] === 0) {
+                addNotification(`${colors[color]} gained a morale boost!`, color);
+            }
+            moraleBoost[color] = 10; // Reset morale boost to 10 frames
+        } else if (moraleBoost[color] > 0) {
+            moraleBoost[color]--; // Decrease morale boost counter if condition is no longer true
         }
     }
 };
@@ -170,8 +171,8 @@ const runFrame = () => {
     }
     updateDebuffs();
     checkMorale();
-    applyMoraleBoost();
     checkVictory();
+    frameCount++;
 };
 
 const addNotification = (message, colorIndex) => {
@@ -197,7 +198,7 @@ const addNotification = (message, colorIndex) => {
             notificationsCounter[message].element.remove();
         }
         delete notificationsCounter[message];
-    }, 3000);
+    }, 100000);
 };
 
 let interval;
@@ -211,7 +212,7 @@ startButton.addEventListener('click', () => {
 });
 
 speedSelect.addEventListener('change', (event) => {
-    speed = parseFloat(event.target.value) * 0.2;
+    speed = parseFloat(event.target.value) * 0.05;
     clearInterval(interval);
     interval = setInterval(runFrame, speed * 1000);
 });
