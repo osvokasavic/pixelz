@@ -2,6 +2,7 @@ const gridSize = 200;
 const pixelGrid = document.getElementById('pixel-grid');
 const startButton = document.getElementById('start-btn');
 const speedSelect = document.getElementById('speed-select');
+const notifications = document.getElementById('notifications');
 
 const colors = ['#FF0000', '#0000FF'];
 let pixels = [];
@@ -41,7 +42,7 @@ const getExtendedNeighbors = (x, y) => {
     const extendedNeighbors = [];
     for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
-            if (x + dx >= 0 && x + dx < gridSize && y + dy >= 0 && y + dy < gridSize) {
+            if (x + dx >= 0 && x + dx < gridSize && y + dy >= 0 && dy < gridSize) {
                 extendedNeighbors.push([x + dx, y + dy]);
             }
         }
@@ -76,6 +77,7 @@ const fight = (x, y) => {
                 neighborPixel.dataset.debuff = 6;
                 neighborPixel.dataset.core = 0; // Not a core until stabilized
                 neighborPixel.dataset.revolt = 3; // Set revolt period
+                addNotification(`${colors[color]} captured a pixel!`);
             } else {
                 neighborPixel.dataset.conquerAttempts = (neighborPixel.dataset.conquerAttempts || 0) + 1;
             }
@@ -98,6 +100,7 @@ const handleRevolt = (x, y) => {
                 pixel.dataset.debuff = 6;
                 pixel.dataset.core = 0;
                 pixel.dataset.revolt = 0;
+                addNotification(`${colors[originalColor]} revolted and recaptured a pixel!`);
             }
         });
         pixel.dataset.revolt--;
@@ -112,6 +115,7 @@ const updateDebuffs = () => {
                 pixel.dataset.debuff--;
             } else if (pixel.dataset.core === '0') {
                 pixel.dataset.core = 1; // Stabilize the pixel as core
+                addNotification(`${colors[pixel.dataset.color]} stabilized a core!`);
             }
         }
     }
@@ -122,6 +126,7 @@ const checkMorale = () => {
         const currentCoreCount = pixels.flat().filter(pixel => parseInt(pixel.dataset.color) === color && pixel.dataset.core === '1').length;
         if (currentCoreCount < 0.75 * coreCounts[color]) {
             moraleBoost[color] = 10; // 10 frames morale boost
+            addNotification(`${colors[color]} gained a morale boost!`);
         }
     }
 };
@@ -144,6 +149,16 @@ const runFrame = () => {
     updateDebuffs();
     checkMorale();
     applyMoraleBoost();
+};
+
+const addNotification = (message) => {
+    const notification = document.createElement('div');
+    notification.classList.add('notification');
+    notification.textContent = message;
+    notifications.appendChild(notification);
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
 };
 
 let interval;
