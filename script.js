@@ -6,6 +6,8 @@ const speedSelect = document.getElementById('speed-select');
 const colors = ['#FF0000', '#0000FF'];
 let pixels = [];
 let speed = 0.2;
+let coreCounts = [0, 0];
+let moraleBoost = [0, 0]; // Morale boost countdown
 
 const createGrid = () => {
     for (let y = 0; y < gridSize; y++) {
@@ -13,10 +15,12 @@ const createGrid = () => {
         for (let x = 0; x < gridSize; x++) {
             const pixel = document.createElement('div');
             pixel.classList.add('pixel');
-            pixel.style.backgroundColor = x < gridSize / 2 ? colors[0] : colors[1];
-            pixel.dataset.color = x < gridSize / 2 ? 0 : 1;
+            const colorIndex = x < gridSize / 2 ? 0 : 1;
+            pixel.style.backgroundColor = colors[colorIndex];
+            pixel.dataset.color = colorIndex;
             pixel.dataset.debuff = 0;
-            pixel.dataset.core = 1; // All starting pixels are cores
+            pixel.dataset.core = (x < gridSize / 2 && colorIndex === 0) || (x >= gridSize / 2 && colorIndex === 1) ? 1 : 0; // Only starting pixels are cores
+            if (pixel.dataset.core == 1) coreCounts[colorIndex]++;
             pixel.dataset.revolt = 0;
             pixels[y][x] = pixel;
             pixelGrid.appendChild(pixel);
@@ -59,6 +63,12 @@ const fight = (x, y) => {
             } else if (neighborPixel.dataset.conquerAttempts) {
                 chance += 0.1 * neighborPixel.dataset.conquerAttempts;
             }
+
+            // Apply morale boost
+            if (moraleBoost[color] > 0) {
+                chance *= 1.8; // 80% attack boost
+            }
+
             if (Math.random() < chance) {
                 neighborPixel.style.backgroundColor = colors[color];
                 neighborPixel.dataset.color = color;
@@ -107,6 +117,23 @@ const updateDebuffs = () => {
     }
 };
 
+const checkMorale = () => {
+    for (let color = 0; color < 2; color++) {
+        const currentCoreCount = pixels.flat().filter(pixel => parseInt(pixel.dataset.color) === color && pixel.dataset.core === '1').length;
+        if (currentCoreCount < 0.75 * coreCounts[color]) {
+            moraleBoost[color] = 10; // 10 frames morale boost
+        }
+    }
+};
+
+const applyMoraleBoost = () => {
+    for (let color = 0; color < 2; color++) {
+        if (moraleBoost[color] > 0) {
+            moraleBoost[color]--;
+        }
+    }
+};
+
 const runFrame = () => {
     for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
@@ -115,6 +142,8 @@ const runFrame = () => {
         }
     }
     updateDebuffs();
+    checkMorale();
+    applyMoraleBoost();
 };
 
 let interval;
