@@ -1,35 +1,32 @@
 body {
+    font-family: Arial, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    font-family: Arial, sans-serif;
 }
 
-#pixel-grid {
+#controls {
+    margin: 20px;
+}
+
+#gameContainer {
     display: grid;
-    grid-template-columns: repeat(200, 1px);
-    grid-template-rows: repeat(200, 1px);
-    margin-bottom: 20px;
+    grid-template-columns: repeat(200, 4px);
+    grid-template-rows: repeat(200, 4px);
+    border: 1px solid #000;
 }
 
 .pixel {
-    width: 1px;
-    height: 1px;
+    width: 4px;
+    height: 4px;
 }
 
-button, select {
-    margin-top: 10px;
-}
-
-#notifications {
+#logContainer {
     margin-top: 20px;
-    max-width: 300px;
-    text-align: center;
-}
-
-.notification {
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
+    width: 800px;
+    height: 100px;
+    overflow-y: scroll;
+    border: 1px solid #000;
     padding: 10px;
-    margin-top: 5px;
+    font-size: 12px;
 }
