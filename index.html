@@ -3,36 +3,302 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grid Game</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Pixel War Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        #menu {
+            margin: 20px;
+        }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(200, 5px);
+            grid-template-rows: repeat(200, 5px);
+            gap: 1px;
+        }
+        .pixel {
+            width: 5px;
+            height: 5px;
+            border: 1px solid #ddd;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        .notification {
+            margin-top: 10px;
+            max-width: 800px;
+            overflow: auto;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .notification p {
+            margin: 0;
+            padding: 0;
+        }
+        #alliances {
+            margin-top: 20px;
+            max-width: 800px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        #alliances h2 {
+            margin: 0 0 10px 0;
+        }
+        #alliances p {
+            margin: 5px 0;
+        }
+    </style>
 </head>
 <body>
-    <div id="controls">
-        <label for="colorOptions">Number of Colors:</label>
-        <select id="colorOptions">
+    <div id="menu">
+        <label for="color-options">Choose number of colors:</label>
+        <select id="color-options">
             <option value="2">2 Colors</option>
             <option value="3">3 Colors</option>
             <option value="4">4 Colors</option>
         </select>
-        <label for="speedOptions">Speed:</label>
-        <select id="speedOptions">
+        <button onclick="initializeGame()">Start Game</button>
+    </div>
+    <div id="grid"></div>
+    <div class="controls">
+        <label for="speed">Speed:</label>
+        <select id="speed">
             <option value="0.5">0.5x</option>
-            <option value="1">1x</option>
+            <option value="1" selected>1x</option>
             <option value="1.5">1.5x</option>
             <option value="2">2x</option>
         </select>
-        <button id="startButton">Start</button>
+        <button onclick="toggleGame()">Start</button>
     </div>
-    <div id="buffContainer"></div>
-    <div id="gameContainer"></div>
-    <div id="logContainer"></div>
-    <div id="allianceControls">
-        <label for="allianceColor1">Force Alliance Color 1:</label>
-        <select id="allianceColor1"></select>
-        <label for="allianceColor2">Force Alliance Color 2:</label>
-        <select id="allianceColor2"></select>
-        <button id="forceAllianceButton">Force Alliance</button>
+    <div class="notification" id="notifications"></div>
+    <div id="alliances">
+        <h2>Alliances</h2>
+        <div id="alliance-list"></div>
     </div>
-    <script src="script.js"></script>
+
+    <script>
+        const gridSize = 200;
+        const gridElement = document.getElementById('grid');
+        const notificationsElement = document.getElementById('notifications');
+        const allianceListElement = document.getElementById('alliance-list');
+        let gameInterval;
+        let gameRunning = false;
+        const colors = ['red', 'blue', 'green', 'yellow'];
+        let grid = [];
+        let cores = [];
+        let alliances = [];
+
+        function initializeGame() {
+            const colorOption = parseInt(document.getElementById('color-options').value);
+            setupGrid(colorOption);
+            renderGrid();
+            alliances = [];
+            renderAlliances();
+        }
+
+        function setupGrid(colorOption) {
+            gridElement.innerHTML = '';
+            grid = [];
+            cores = [];
+
+            for (let row = 0; row < gridSize; row++) {
+                grid[row] = [];
+                for (let col = 0; col < gridSize; col++) {
+                    const pixelElement = document.createElement('div');
+                    pixelElement.classList.add('pixel');
+                    gridElement.appendChild(pixelElement);
+
+                    let colorIndex = Math.floor((col / gridSize) * colorOption);
+                    if (colorOption > 2 && row > gridSize / 2) colorIndex = (colorIndex + 1) % colorOption;
+                    if (colorOption > 3 && row > gridSize / 2 && col > gridSize / 2) colorIndex = (colorIndex + 1) % colorOption;
+
+                    const pixel = {
+                        element: pixelElement,
+                        color: colors[colorIndex],
+                        core: true,
+                        occupationTimer: 0,
+                        uprisingTimer: 0
+                    };
+                    grid[row][col] = pixel;
+                    pixelElement.style.backgroundColor = colors[colorIndex];
+
+                    // Initialize cores
+                    if (pixel.core) {
+                        cores.push(pixel);
+                    }
+                }
+            }
+        }
+
+        function renderGrid() {
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const pixel = grid[row][col];
+                    pixel.element.style.backgroundColor = pixel.color;
+                }
+            }
+        }
+
+        function toggleGame() {
+            gameRunning = !gameRunning;
+            if (gameRunning) {
+                startGame();
+            } else {
+                clearInterval(gameInterval);
+            }
+        }
+
+        function startGame() {
+            const speed = parseFloat(document.getElementById('speed').value);
+            const intervalTime = 200 / speed;
+            gameInterval = setInterval(gameFrame, intervalTime);
+        }
+
+        function gameFrame() {
+            const changes = [];
+
+            // Handle attacks and occupation
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const pixel = grid[row][col];
+                    if (pixel.core) continue; // Skip core pixels
+
+                    // Random chance to attack neighboring pixels
+                    if (Math.random() < 0.5) {
+                        const neighbors = getNeighbors(row, col);
+                        const target = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        if (!target) continue;
+
+                        if (target.color !== pixel.color && !target.core) {
+                            const attackSuccess = Math.random() < 0.75;
+                            if (attackSuccess) {
+                                changes.push({ target, newColor: pixel.color });
+                            } else {
+                                // Occupation timer logic
+                                if (target.occupationTimer < 6) {
+                                    target.occupationTimer++;
+                                } else {
+                                    target.core = true;
+                                    cores.push(target);
+                                    target.occupationTimer = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply changes
+            for (const change of changes) {
+                change.target.color = change.newColor;
+                change.target.occupationTimer = 0;
+            }
+
+            // Handle core logic
+            handleCores();
+
+            // Handle uprisings
+            handleUprisings();
+
+            // Handle alliances
+            handleAlliances();
+
+            // Render grid
+            renderGrid();
+
+            // Log notifications
+            notificationsElement.innerHTML += '<p>Frame updated</p>';
+        }
+
+        function getNeighbors(row, col) {
+            const neighbors = [];
+            if (row > 0) neighbors.push(grid[row - 1][col]);
+            if (row < gridSize - 1) neighbors.push(grid[row + 1][col]);
+            if (col > 0) neighbors.push(grid[row][col - 1]);
+            if (col < gridSize - 1) neighbors.push(grid[row][col + 1]);
+            return neighbors;
+        }
+
+        function handleCores() {
+            const newCores = [];
+            for (const core of cores) {
+                if (core.occupationTimer >= 20) {
+                    core.core = false;
+                } else {
+                    core.occupationTimer++;
+                    newCores.push(core);
+                }
+            }
+            cores = newCores;
+        }
+
+        function handleUprisings() {
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const pixel = grid[row][col];
+                    if (!pixel.core && pixel.occupationTimer >= 3) {
+                        const uprisingChance = [0.03, 0.05, 0.07][pixel.occupationTimer - 3];
+                        if (Math.random() < uprisingChance) {
+                            const neighbors = getNeighbors(row, col);
+                            for (const neighbor of neighbors) {
+                                neighbor.color = pixel.color;
+                                neighbor.occupationTimer = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function handleAlliances() {
+            const colorCounts = {};
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const color = grid[row][col].color;
+                    if (!colorCounts[color]) {
+                        colorCounts[color] = 0;
+                    }
+                    colorCounts[color]++;
+                }
+            }
+
+            const totalPixels = gridSize * gridSize;
+            const threshold = totalPixels * 0.2;
+
+            for (const color in colorCounts) {
+                if (colorCounts[color] > totalPixels * 0.5) {
+                    const weakColors = Object.keys(colorCounts).filter(c => c !== color && colorCounts[c] < threshold);
+                    if (weakColors.length >= 2) {
+                        const allianceMembers = weakColors.slice(0, 2);
+                        if (!alliances.some(a => a.target === color)) {
+                            alliances.push({
+                                members: allianceMembers,
+                                target: color
+                            });
+                            notificationsElement.innerHTML += `<p>Alliance formed: ${allianceMembers.join(', ')} against ${color}</p>`;
+                        }
+                    }
+                }
+            }
+
+            renderAlliances();
+        }
+
+        function renderAlliances() {
+            allianceListElement.innerHTML = '';
+            alliances.forEach(alliance => {
+                const allianceInfo = document.createElement('p');
+                allianceInfo.textContent = `Alliance: ${alliance.members.join(', ')} targeting ${alliance.target}`;
+                allianceListElement.appendChild(allianceInfo);
+            });
+        }
+    </script>
 </body>
 </html>
