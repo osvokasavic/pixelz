@@ -3,6 +3,10 @@ const startButton = document.getElementById('startButton');
 const colorOptions = document.getElementById('colorOptions');
 const speedOptions = document.getElementById('speedOptions');
 const logContainer = document.getElementById('logContainer');
+const buffContainer = document.getElementById('buffContainer');
+const allianceColor1 = document.getElementById('allianceColor1');
+const allianceColor2 = document.getElementById('allianceColor2');
+const forceAllianceButton = document.getElementById('forceAllianceButton');
 
 let grid = [];
 const gridSize = 200;
@@ -13,6 +17,7 @@ let frameDuration = 100;
 let coreGrid = [];
 let coreTimers = [];
 let occupationTimers = [];
+let desperateDefenseTimers = {};
 let colorStats = {};
 let alliances = [];
 
@@ -22,14 +27,17 @@ const initGrid = (numColors) => {
     coreGrid = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
     coreTimers = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
     occupationTimers = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+    desperateDefenseTimers = {};
     selectedColors = colors.slice(0, numColors);
 
     colorStats = {};
     selectedColors.forEach(color => {
         colorStats[color] = {
             cores: 0,
-            desperateDefense: false
+            desperateDefense: false,
+            alliance: null
         };
+        desperateDefenseTimers[color] = 0;
     });
 
     for (let y = 0; y < gridSize; y++) {
@@ -52,6 +60,9 @@ const initGrid = (numColors) => {
             colorStats[grid[y][x]].cores++;
         }
     }
+
+    updateBuffs();
+    updateAllianceOptions();
 };
 
 const startGame = () => {
@@ -81,6 +92,9 @@ const gameLoop = () => {
 
             neighbors.forEach(([nx, ny]) => {
                 if (!attackAttempts[ny][nx] && grid[ny][nx] !== currentColor) {
+                    if (alliances.includes([currentColor, grid[ny][nx]]) || alliances.includes([grid[ny][nx], currentColor])) {
+                        return;
+                    }
                     let attackSuccessChance = coreGrid[ny][nx] ? 0.25 : 0.75;
                     attackSuccessChance *= getAttackModifier(currentColor, grid[ny][nx]);
 
@@ -130,41 +144,45 @@ const gameLoop = () => {
     }
 
     // Handle desperate defense buff
-    for (let color in colorStats) {
-        const stats = colorStats[color];
-        const totalCores = stats.cores;
-        const originalCores = selectedColors.includes(color) ? (gridSize * gridSize) / selectedColors.length : 0;
-
-        if (totalCores < originalCores * 0.75) {
-            stats.desperateDefense = true;
-        } else {
-            stats.desperateDefense = false;
+    selectedColors.forEach(color => {
+        if (colorStats[color].cores <= 0.75 * (gridSize * gridSize / selectedColors.length) && desperateDefenseTimers[color] <= 0) {
+            colorStats[color].desperateDefense = true;
+            desperateDefenseTimers[color] = 10;
+        } else if (desperateDefenseTimers[color] > 0) {
+            desperateDefenseTimers[color]--;
+            if (desperateDefenseTimers[color] <= 0) {
+                colorStats[color].desperateDefense = false;
+            }
         }
-    }
+    });
 
-    // Handle alliances for 3 and 4 colors
-    if (selectedColors.length > 2) {
-        handleAlliances();
-    }
-
-    // Update grid and DOM
-    for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-            const pixel = gameContainer.children[y * gridSize + x];
-            pixel.style.backgroundColor = newGrid[y][x];
-        }
-    }
+    // Update alliances
+    handleAlliances();
+    updateBuffs();
 
     grid = newGrid;
+
+    // Update grid display
+    const pixels = document.querySelectorAll('.pixel');
+    let i = 0;
+    for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+            pixels[i].style.backgroundColor = grid[y][x];
+            i++;
+        }
+    }
 };
 
 const getAttackModifier = (attackingColor, defendingColor) => {
-    let modifier = 1;
+    let modifier = 1.0;
     if (colorStats[attackingColor].desperateDefense) {
         modifier -= 0.2;
     }
     if (colorStats[defendingColor].desperateDefense) {
         modifier -= 0.25;
+    }
+    if (alliances.includes(attackingColor) && alliances.includes(defendingColor)) {
+        return 0;
     }
     if (alliances.includes(attackingColor) && !alliances.includes(defendingColor)) {
         modifier += 0.1;
@@ -188,6 +206,40 @@ const handleAlliances = () => {
     }
 };
 
+const updateBuffs = () => {
+    buffContainer.innerHTML = '';
+    selectedColors.forEach(color => {
+        const buffInfo = document.createElement('div');
+        buffInfo.textContent = `${color}: ${colorStats[color].desperateDefense ? 'Desperate Defense' : ''} ${alliances.includes(color) ? 'Alliance' : ''}`;
+        buffContainer.appendChild(buffInfo);
+    });
+};
+
+const updateAllianceOptions = () => {
+    allianceColor1.innerHTML = '';
+    allianceColor2.innerHTML = '';
+    selectedColors.forEach(color => {
+        const option1 = document.createElement('option');
+        option1.value = color;
+        option1.textContent = color;
+        allianceColor1.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = color;
+        option2.textContent = color;
+        allianceColor2.appendChild(option2);
+    });
+};
+
+const forceAlliance = () => {
+    const color1 = allianceColor1.value;
+    const color2 = allianceColor2.value;
+    if (color1 && color2 && color1 !== color2) {
+        alliances = [color1, color2];
+        updateBuffs();
+    }
+};
+
 const logEvent = (message) => {
     const logEntry = document.createElement('div');
     logEntry.textContent = message;
@@ -202,3 +254,5 @@ startButton.addEventListener('click', () => {
     initGrid(numColors);
     startGame();
 });
+
+forceAllianceButton.addEventListener('click', forceAlliance);
