@@ -5,7 +5,7 @@ body {
     align-items: center;
 }
 
-#controls {
+#controls, #allianceControls {
     margin: 20px;
 }
 
@@ -29,4 +29,11 @@ body {
     border: 1px solid #000;
     padding: 10px;
     font-size: 12px;
+}
+
+#buffContainer {
+    margin: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
