@@ -17,7 +17,6 @@ let frameDuration = 100;
 let coreGrid = [];
 let coreTimers = [];
 let occupationTimers = [];
-let desperateDefenseTimers = {};
 let colorStats = {};
 let alliances = [];
 
@@ -27,17 +26,14 @@ const initGrid = (numColors) => {
     coreGrid = Array.from({ length: gridSize }, () => Array(gridSize).fill(false));
     coreTimers = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
     occupationTimers = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
-    desperateDefenseTimers = {};
     selectedColors = colors.slice(0, numColors);
 
     colorStats = {};
     selectedColors.forEach(color => {
         colorStats[color] = {
             cores: 0,
-            desperateDefense: false,
             alliance: null
         };
-        desperateDefenseTimers[color] = 0;
     });
 
     for (let y = 0; y < gridSize; y++) {
@@ -142,19 +138,6 @@ const gameLoop = () => {
             }
         }
     }
-
-    // Handle desperate defense buff
-    selectedColors.forEach(color => {
-        if (colorStats[color].cores <= 0.75 * (gridSize * gridSize / selectedColors.length) && desperateDefenseTimers[color] <= 0) {
-            colorStats[color].desperateDefense = true;
-            desperateDefenseTimers[color] = 10;
-        } else if (desperateDefenseTimers[color] > 0) {
-            desperateDefenseTimers[color]--;
-            if (desperateDefenseTimers[color] <= 0) {
-                colorStats[color].desperateDefense = false;
-            }
-        }
-    });
 
     // Update alliances
     handleAlliances();
