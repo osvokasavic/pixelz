@@ -3,55 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel Grid Game</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        .controls {
-            margin-bottom: 20px;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(200, 4px);
-            grid-template-rows: repeat(200, 4px);
-        }
-        .pixel {
-            width: 4px;
-            height: 4px;
-        }
-        .log {
-            margin-top: 20px;
-            max-height: 150px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            background: #f9f9f9;
-        }
-    </style>
+    <title>Grid Game</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="controls">
-        <label for="colorOptions">Choose number of colors:</label>
+    <div id="controls">
+        <label for="colorOptions">Number of Colors:</label>
         <select id="colorOptions">
-            <option value="2">2 colors</option>
-            <option value="3">3 colors</option>
-            <option value="4">4 colors</option>
+            <option value="2">2 Colors</option>
+            <option value="3">3 Colors</option>
+            <option value="4">4 Colors</option>
         </select>
-        <br>
-        <label for="speed">Speed:</label>
-        <select id="speed">
+        <label for="speedOptions">Speed:</label>
+        <select id="speedOptions">
             <option value="0.5">0.5x</option>
             <option value="1">1x</option>
             <option value="1.5">1.5x</option>
             <option value="2">2x</option>
         </select>
-        <br>
         <button id="startButton">Start</button>
     </div>
-    <div class="grid" id="grid"></div>
-    <div class="log" id="log"></div>
-
-    <script src="app.js"></script>
+    <div id="gameContainer"></div>
+    <div id="logContainer"></div>
+    <script src="script.js"></script>
 </body>
 </html>
